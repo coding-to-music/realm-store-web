@@ -1,47 +1,54 @@
 import Head from 'next/head'
-import { useState, useEffect } from 'react'
-import * as Realm from 'realm-web'
+import clientPromise from '../lib/mongodb'
+import Category from '../components/Category'
+import Container from '../components/Container'
+import Footer from '../components/Footer'
+import Header from '../components/Header'
+import Hero from '../components/Hero'
+import Pagination from '../components/Pagination'
+import Products from '../components/Products'
 
-export default function Home() {
-  const [products, setProducts] = useState([])
+import 'tailwindcss/tailwind.css'
 
-  useEffect(async () => {
-    const REALM_APP_ID = 'products-vudbf'
-    const app = new Realm.App({ id: REALM_APP_ID })
-    const credentials = Realm.Credentials.anonymous()
-    try {
-      const user = await app.logIn(credentials)
-      console.log('user', user)
-      const allProducts = await user.functions.getAllProducts()
-      setProducts(allProducts)
-    } catch (error) {
-      console.log('error  ', error)
-    }
-  }, [])
+export default function Home({ isConnected, products }) {
   return (
-    // <div className="flex min-h-screen flex-col items-center justify-center py-2">
-      <Head>
-        <title>Products App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
-    {products &&
-    products.map(product => {
-      return <p key={product.id}>{product.name}</p>
-    }
-      }
-    // </div>
+    <>
+      {isConnected && (
+        <div className="flex min-h-screen flex-col items-center justify-center py-2">
+          <Head>
+            <title>Create Next App</title>
+            <link rel="icon" href="/favicon.ico" />
+          </Head>
+          <div className="min-h-screen w-full bg-white">
+            <Header />
+            <Container>
+              <Hero />
+              <Category
+                category="Tech Wear"
+                categoryCount={`${products.length} Products`}
+              />
+              <Products products={products} />
+              <Pagination />
+            </Container>
+            <Footer />
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
-// <div className="flex min-h-screen flex-col items-center justify-center py-2">
-//   <Head>
-//     <title>Create Next App</title>
-//     <link rel="icon" href="/favicon.ico" />
-//   </Head>
+export async function getServerSideProps(context) {
+  const client = await clientPromise
+  const isConnected = await client.isConnected()
+  const db = client.db('store')
+  const collection = db.collection('products')
+  const products = await collection.find({}).toArray()
 
-//   <main className="flex w-full flex-1 flex-col items-center justify-center px-20 text-center">
-//     <h1 className="text-4xl font-bold">
-//   </main>
-// </div>
+  return {
+    props: {
+      isConnected,
+      products: JSON.parse(JSON.stringify(products)),
+    },
+  }
+}
